@@ -6,7 +6,7 @@ import {NotifyData} from "@/src/models/notify";
 
 interface AlertNotifyProps {
     show: boolean,
-    data?: NotifyData | null,
+    payload?: NotifyData | null,
     cb: Dispatch<SetStateAction<boolean>>
 }
 
@@ -23,7 +23,7 @@ export function AlertNotify(props: AlertNotifyProps) {
                 clearTimeout(timeoutRef.current);
             }
         }
-    }, [props.show, props.cb]);
+    }, [props]);
 
     return (
         <div className={cn(
@@ -32,9 +32,9 @@ export function AlertNotify(props: AlertNotifyProps) {
         )}>
             <Alert>
                 <Terminal className="h-4 w-4" />
-                <AlertTitle>{props?.data?.title}</AlertTitle>
+                <AlertTitle>{props?.payload?.title}</AlertTitle>
                 <AlertDescription>
-                    {props.data?.description}
+                    {props.payload?.description}
                 </AlertDescription>
             </Alert>
         </div>

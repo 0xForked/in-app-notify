@@ -24,32 +24,45 @@ function App() {
         setAlertDialogData,
     ] = React.useState<NotifyData | null>(null);
 
-    const userId: string = "65b38384-a192-4474-81e6-fc429a309e0c"
-
-    const publishMessage = (type: NotifyType) => publishNotifyEvent(userId, type)
+    let query = new URLSearchParams(window.location.search);
+    let userId = query.get('user_id');
+    const publishMessage = (type: NotifyType) => publishNotifyEvent(userId as string, type)
 
     useEffect(() => {
+        if (typeof EventSource === "undefined") {
+            console.log("Browser not support SSE")
+            return
+        }
         let source = new EventSource(`${apiURL}/${userId}`);
+        source.onopen = (...args) => {
+            console.log("on open", args);
+        };
         source.onmessage = (event) => {
+            console.log("notify event", event)
+
             const data  = JSON.parse(event.data)
             if (data.type === "ALERT") {
-                setOpenAlert(true)
+                setOpenAlert(false)
                 setAlertData(data)
+                setOpenAlert(true)
             }
 
             if (data.type === "MODAL") {
-                setOpenAlertDialog(true)
+                setOpenAlertDialog(false)
                 setAlertDialogData(data)
+                setOpenAlertDialog(true)
             }
         };
-        source.onerror = (err) =>  {
-            console.log("Error occurred, attempting to reconnect", err);
-            source = new EventSource(`${apiURL}/${userId}`);
+        source.onerror = (_) =>  {
+            console.log("An error occurred while attempting to connect.");
         };
+        source.addEventListener("ping", (event) => {
+            console.log("ping/keep-alive", event);
+        });
         return () => {
             source.close();
         };
-    }, []);
+    }, [userId]);
 
     return (
         <main className="w-min-full h-min-full text-gray-700">
@@ -65,8 +78,8 @@ function App() {
                     </Button>
                 </div>
             </section>
-            <AlertNotify show={openAlert} data={alertData} cb={setOpenAlert}/>
-            <AlertDialogNotify show={openAlertDialog} data={alertDialogData} cb={setOpenAlertDialog}/>
+            <AlertNotify show={openAlert} payload={alertData} cb={setOpenAlert}/>
+            <AlertDialogNotify show={openAlertDialog} payload={alertDialogData} cb={setOpenAlertDialog}/>
         </main>
   );
 }
