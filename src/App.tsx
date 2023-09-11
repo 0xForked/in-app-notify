@@ -2,10 +2,16 @@ import React, {useEffect} from 'react';
 import {Button} from "./components/ui/button";
 import {AlertNotify} from "./components/alert-notify";
 import {AlertDialogNotify} from "./components/alert-dialog-notify";
-import {apiURL, NotifyType, publishNotifyEvent} from "./lib/api";
+import {NotifyType, publishNotifyEvent} from "./lib/api";
 import {NotifyData} from "./models/notify";
+import {onMessageListener, requestPermission} from "./lib/fcm";
 
 function App() {
+    const [
+        fcmToken,
+        setFCMToken,
+    ] = React.useState<String | null>(null);
+
     const [
         openAlert,
         setOpenAlert,
@@ -24,45 +30,34 @@ function App() {
         setAlertDialogData,
     ] = React.useState<NotifyData | null>(null);
 
-    let query = new URLSearchParams(window.location.search);
-    let userId = query.get('user_id');
-    const publishMessage = (type: NotifyType) => publishNotifyEvent(userId as string, type)
+    const publishMessage = (type: NotifyType) => publishNotifyEvent(fcmToken as string, type)
 
     useEffect(() => {
-        if (typeof EventSource === "undefined") {
-            console.log("Browser not support SSE")
-            return
-        }
-        let source = new EventSource(`${apiURL}/${userId}`);
-        source.onopen = (...args) => {
-            console.log("on open", args);
-        };
-        source.onmessage = (event) => {
-            console.log("notify event", event)
-
-            const data  = JSON.parse(event.data)
-            if (data.type === "ALERT") {
-                setOpenAlert(false)
-                setAlertData(data)
-                setOpenAlert(true)
+        requestPermission(setFCMToken);
+        const unsubscribe = onMessageListener().then((payload: any) => {
+            if (payload) {
+                console.log(payload)
             }
 
-            if (data.type === "MODAL") {
-                setOpenAlertDialog(false)
-                setAlertDialogData(data)
-                setOpenAlertDialog(true)
+            if(payload?.data.type === "ALERT") {
+                setAlertData(payload?.data);
+                setOpenAlert(true);
             }
-        };
-        source.onerror = (_) =>  {
-            console.log("An error occurred while attempting to connect.");
-        };
-        source.addEventListener("ping", (event) => {
-            console.log("ping/keep-alive", event);
+
+            if (payload?.data.type === "MODAL") {
+                setAlertDialogData({
+                    title: payload?.data?.title,
+                    description: payload?.data?.description,
+                    type: payload?.data?.type,
+                    data: JSON.parse( payload?.data?.data),
+                })
+                setOpenAlertDialog(true);
+            }
         });
         return () => {
-            source.close();
+            unsubscribe.catch((err) => console.log('failed: ', err));
         };
-    }, [userId]);
+    }, []);
 
     return (
         <main className="w-min-full h-min-full text-gray-700">
