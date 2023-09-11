@@ -6,10 +6,10 @@ export enum NotifyType  {
 }
 
 export async function publishNotifyEvent(
-    userId: string,
+    fcmToken: string,
     notifyType: NotifyType,
 ) {
-    const response = await fetch(`${apiURL}/${userId}/${notifyType}`);
+    const response = await fetch(`${apiURL}/${fcmToken}/${notifyType}`);
 
     if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
