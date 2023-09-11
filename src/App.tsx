@@ -6,6 +6,7 @@ import {NotifyType, publishNotifyEvent} from "./lib/api";
 import {NotifyData} from "./models/notify";
 import {onMessageListener, requestPermission} from "./lib/fcm";
 
+// USAGE: http://localhost:3001/?user_id=65b38384-a192-4474-81e6-fc429a309e0c
 function App() {
     const [
         fcmToken,
@@ -30,28 +31,33 @@ function App() {
         setAlertDialogData,
     ] = React.useState<NotifyData | null>(null);
 
-    const publishMessage = (type: NotifyType) => publishNotifyEvent(fcmToken as string, type)
+    let query = new URLSearchParams(window.location.search);
+    let userId = query.get('user_id');
+    const publishMessage = (type: NotifyType) => publishNotifyEvent(
+        userId as string, type)
 
     useEffect(() => {
         requestPermission(setFCMToken);
         const unsubscribe = onMessageListener().then((payload: any) => {
-            if (payload) {
-                console.log(payload)
-            }
+            try {
+                const item = JSON.parse(payload?.data?.item)
 
-            if(payload?.data.type === "ALERT") {
-                setAlertData(payload?.data);
-                setOpenAlert(true);
-            }
+                if(item?.type === "ALERT") {
+                    setAlertData(item);
+                    setOpenAlert(true);
+                }
 
-            if (payload?.data.type === "MODAL") {
-                setAlertDialogData({
-                    title: payload?.data?.title,
-                    description: payload?.data?.description,
-                    type: payload?.data?.type,
-                    data: JSON.parse( payload?.data?.data),
-                })
-                setOpenAlertDialog(true);
+                if (item?.type === "MODAL") {
+                    setAlertDialogData({
+                        title: item?.title,
+                        description: item?.description,
+                        type: item?.type,
+                        data: JSON.parse(item?.data),
+                    })
+                    setOpenAlertDialog(true);
+                }
+            } catch (e) {
+                alert(e)
             }
         });
         return () => {
